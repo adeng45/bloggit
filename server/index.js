@@ -26,7 +26,7 @@ app.post('/register', async (req,res) => {
   try{
     const userDoc = await User.create({
       username,
-      password:bcrypt.hashSync(password,salt),
+      password:bcrypt.hashSync(password, salt),
     });
     res.json(userDoc);
   } catch(e) {
@@ -49,12 +49,16 @@ app.post('/login', async (req,res) => {
       });
     });
   } else {
-    res.status(400).json('wrong credentials');
+    res.status(400).json('Wrong credentials!');
   }
 });
 
 app.get('/profile', (req,res) => {
   const {token} = req.cookies;
+  if (!token) {
+    res.end();
+  }
+  console.log(token);
   jwt.verify(token, secret, {}, (err,info) => {
     if (err) throw err;
     res.json(info);
@@ -62,15 +66,19 @@ app.get('/profile', (req,res) => {
 });
 
 app.post('/logout', (req,res) => {
-  res.cookie('token', '').json('ok');
+  res.clearCookie('token').json('ok');
 });
 
 app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
-  const {originalname,path} = req.file;
-  const parts = originalname.split('.');
-  const ext = parts[parts.length - 1];
-  const newPath = path+'.'+ext;
-  fs.renameSync(path, newPath);
+
+  let newPath = 'empty.jpg';
+  if (req.file) {
+    const {originalname,path} = req.file;
+    const parts = originalname.split('.');
+    const ext = parts[parts.length - 1];
+    newPath = path+'.'+ext;
+    fs.renameSync(path, newPath);
+  } 
 
   const {token} = req.cookies;
   jwt.verify(token, secret, {}, async (err,info) => {
@@ -80,7 +88,7 @@ app.post('/post', uploadMiddleware.single('file'), async (req,res) => {
       title,
       summary,
       content,
-      cover:newPath,
+      cover: newPath,
       author:info.id,
     });
     res.json(postDoc);
@@ -105,15 +113,14 @@ app.put('/post',uploadMiddleware.single('file'), async (req,res) => {
     const postDoc = await Post.findById(id);
     const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
     if (!isAuthor) {
-      return res.status(400).json('you are not the author');
+      return res.status(400).json('You are not the author!');
     }
-    await postDoc.update({
+    await postDoc.updateOne({
       title,
       summary,
       content,
       cover: newPath ? newPath : postDoc.cover,
     });
-
     res.json(postDoc);
   });
 
@@ -134,5 +141,22 @@ app.get('/post/:id', async (req, res) => {
   res.json(postDoc);
 })
 
-app.listen(3001);
+app.delete('/delete/:id', async (req,res) => {
+  const {token} = req.cookies;
+  jwt.verify(token, secret, {}, async (err,info) => {
+    if (err) throw err;
+    const {id} = req.params;
+    const postDoc = await Post.findById(id);
+    const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+    if (!isAuthor) {
+      return res.status(400).json('You are not the author!');
+    }
+    await Post.deleteOne({_id: id});
+    res.status(200).json(null);
+  });
+
+});
+
+
+app.listen(4000, () => {console.log('Listening on PORT 4000')});
 //

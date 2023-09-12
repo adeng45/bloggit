@@ -8,10 +8,12 @@ export default function EditPost() {
   const [summary,setSummary] = useState('');
   const [content,setContent] = useState('');
   const [files, setFiles] = useState('');
-  const [redirect,setRedirect] = useState(false);
+  const [redirectHome,setRedirectHome] = useState(false);
+  const [redirectPost,setRedirectPost] = useState(false);
+
 
   useEffect(() => {
-    fetch('http://localhost:3001/post/'+id)
+    fetch('http://localhost:4000/post/'+id)
       .then(response => {
         response.json().then(postInfo => {
           setTitle(postInfo.title);
@@ -31,34 +33,52 @@ export default function EditPost() {
     if (files?.[0]) {
       data.set('file', files?.[0]);
     }
-    const response = await fetch('http://localhost:3001/post', {
+    const response = await fetch('http://localhost:4000/post', {
       method: 'PUT',
       body: data,
       credentials: 'include',
     });
     if (response.ok) {
-      setRedirect(true);
+      setRedirectPost(true);
     }
   }
 
-  if (redirect) {
+  async function deletePost(ev) {
+    ev.preventDefault();
+    const response = await fetch('http://localhost:4000/delete/'+id, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (response.ok) {
+      setRedirectHome(true);
+    }
+  }
+
+  if (redirectPost) {
     return <Navigate to={'/post/'+id} />
   }
 
+  else if (redirectHome) {
+    return <Navigate to={'/'} />
+  }
+
   return (
-    <form onSubmit={updatePost}>
-      <input type="title"
-             placeholder={'Title'}
-             value={title}
-             onChange={ev => setTitle(ev.target.value)} />
-      <input type="summary"
-             placeholder={'Summary'}
-             value={summary}
-             onChange={ev => setSummary(ev.target.value)} />
-      <input type="file"
-             onChange={ev => setFiles(ev.target.files)} />
-      <Editor onChange={setContent} value={content} />
-      <button style={{marginTop:'5px'}}>Update post</button>
-    </form>
+    <>
+      <form onSubmit={updatePost}>
+        <input type="title"
+              placeholder={'Title'}
+              value={title}
+              onChange={ev => setTitle(ev.target.value)} />
+        <input type="summary"
+              placeholder={'Summary'}
+              value={summary}
+              onChange={ev => setSummary(ev.target.value)} />
+        <input type="file"
+              onChange={ev => setFiles(ev.target.files)} />
+        <Editor onChange={setContent} value={content} />
+        <button className="update" style={{marginTop:'5px'}}>Update</button>
+      </form>
+      <button className="delete" style={{marginTop:'5px'}} onClick={deletePost}>Delete</button>
+    </>
   );
 }
